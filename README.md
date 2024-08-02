@@ -1,0 +1,1 @@
+# trans-pdf-chatgpt-bookmarklet
