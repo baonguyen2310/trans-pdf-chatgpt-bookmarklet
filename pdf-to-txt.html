@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Text Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+</head>
+<body>
+    <h1>PDF to Text Converter</h1>
+    <input type="file" id="fileInput" accept="application/pdf">
+    <button id="convertButton">Convert to TXT</button>
+    <a id="downloadLink" style="display:none">Download TXT</a>
+    
+    <script>
+        document.getElementById('convertButton').addEventListener('click', () => {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) return;
+
+            const file = fileInput.files[0];
+            const fileReader = new FileReader();
+
+            fileReader.onload = function() {
+                const typedArray = new Uint8Array(this.result);
+
+                pdfjsLib.getDocument(typedArray).promise.then(pdf => {
+                    let textContent = '';
+                    let promises = [];
+
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        promises.push(pdf.getPage(pageNum).then(page => {
+                            return page.getTextContent().then(textContentPage => {
+                                const pageText = textContentPage.items.map(item => item.str).join('\n');
+                                textContent += `Page ${pageNum}:\n${pageText}\n\n`;
+                            });
+                        }));
+                    }
+
+                    Promise.all(promises).then(() => {
+                        const blob = new Blob([textContent], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const downloadLink = document.getElementById('downloadLink');
+                        downloadLink.href = url;
+                        downloadLink.download = 'pdf-content.txt';
+                        downloadLink.style.display = 'block';
+                        downloadLink.textContent = 'Download TXT';
+                    });
+                });
+            };
+
+            fileReader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>

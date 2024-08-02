@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chuyển PDF thành HTML</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+    <h1>Chuyển PDF thành HTML</h1>
+    <input type="file" id="pdf-file" />
+    <button id="download-html" style="display: none;">Tải File HTML</button>
+    <p id="status-message"></p>
+
+    <textarea id="htmlContent" style="display: none;"></textarea>
+
+    <script>
+        document.getElementById('pdf-file').addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = 'Đang xử lý...';
+
+            if (file) {
+                try {
+                    const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
+                    const totalPages = pdf.numPages;
+                    let htmlContent = ''; // Tạo biến để lưu nội dung HTML
+
+                    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: 3.0 }); // Tăng độ phân giải
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        
+                        const renderContext = {
+                            canvasContext: context,
+                            viewport: viewport
+                        };
+                        
+                        await page.render(renderContext).promise;
+                        
+                        const imgData = canvas.toDataURL('image/jpeg', 0.7); // Sử dụng JPEG với mức nén
+                        const imgElement = `<img src="${imgData}" style="display: block; margin-bottom: 10px;" />`;
+                        htmlContent += imgElement;
+                    }
+                    
+                    // Cập nhật nội dung của textarea
+                    document.getElementById('htmlContent').value = `
+                        <!DOCTYPE html>
+                        <html lang="vi">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Hình ảnh từ PDF</title>
+                        </head>
+                        <body>
+                            ${htmlContent}
+                        </body>
+                        </html>
+                    `;
+
+                    const downloadButton = document.getElementById('download-html');
+                    downloadButton.style.display = 'block';
+                    downloadButton.addEventListener('click', downloadHTML)
+
+                    statusMessage.textContent = 'Tệp HTML đã sẵn sàng. Nhấn nút để tải xuống.';
+                } catch (error) {
+                    statusMessage.textContent = 'Đã xảy ra lỗi. Vui lòng thử lại.';
+                    console.error(error);
+                }
+            }
+        }
+
+        function downloadHTML() {
+            const htmlContent = document.getElementById('htmlContent').value;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pdf-images.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
